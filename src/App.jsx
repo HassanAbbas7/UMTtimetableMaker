@@ -6,11 +6,13 @@ import {Routes, Route} from 'react-router-dom'
 import ReactDOM from 'react-dom';
 import { BrowserRouter } from 'react-router-dom';
 
+
 const App= ()=> {
   const [timetables, setTimetables] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [daysOff, setDaysOff] = useState([]);
+  const [allSelected, setAllSelected] = useState(false)
   
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -21,6 +23,17 @@ const App= ()=> {
       setDaysOff([...daysOff, day]);
     }
   };
+
+  useEffect(()=>{
+    if (daysOff.length >= 6){
+      setAllSelected(true);
+    }
+    else{
+      setAllSelected(false)
+    }
+
+  }, [daysOff])
+
 
   const fetchTimetables = async () => {
     setLoading(true);
@@ -94,9 +107,10 @@ const App= ()=> {
         {timetables.length === 0 && !loading ? (
           <p className="no-results">No timetables match your filters. Try selecting fewer days off.</p>
         ) : (
-          timetables.map(timetable => (
+          allSelected? <><h1>اوے زیادہ مستی نہ کر، کالج نہیں آنا تو نہ آ</h1></> : <>{timetables.map(timetable => (
             <Timetable key={timetable.id} data={timetable} />
-          ))
+          ))}</>
+          
         )}
       </div>
     </div>
@@ -160,6 +174,7 @@ function Timetable({ data }) {
           <DaySchedule key={day} day={day} sessions={scheduleByDay[day]} />
         ))}
       </div>
+      
     </div>
   );
 }
