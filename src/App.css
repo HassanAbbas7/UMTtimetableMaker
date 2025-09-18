@@ -53,6 +53,13 @@ body {
   margin-bottom: 20px;
 }
 
+.timing-checkboxes{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;

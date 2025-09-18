@@ -11,18 +11,51 @@ const App= ()=> {
   const [timetables, setTimetables] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [daysOff, setDaysOff] = useState([]);
+  const [daysOff, setDaysOff] = useState(['Monday']);
   const [allSelected, setAllSelected] = useState(false)
+  const [timingsOff, setTimingsOff] = useState([]);
+  const [allCourses, setAllCourses] = useState([]);      // all from server
+  const [selectedCourses, setSelectedCourses] = useState([]); // currently selected
   
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
+  const timingOptions = [
+    { label: "8:00 AM", value: 8 },
+    { label: "9:30 AM", value: 9 },
+    { label: "11:00 AM", value: 11 },
+    { label: "12:30 PM", value: 12 },
+    { label: "2:00 PM", value: 14 },
+    { label: "3:30 PM", value: 15 },
+    { label: "5:00 PM", value: 17 },
+    { label: "6:30 PM", value: 18 },
+  ];
   const handleDayChange = (day) => {
     if (daysOff.includes(day)) {
+      if (daysOff.length < 2){
+        alert("Select at least one off day!");
+        return
+      }
       setDaysOff(daysOff.filter(d => d !== day));
     } else {
       setDaysOff([...daysOff, day]);
     }
   };
+
+  const handleTimingChange = (hour) => {
+    if (timingsOff.includes(hour)) {
+      setTimingsOff(timingsOff.filter(t => t !== hour));
+    } else {
+      setTimingsOff([...timingsOff, hour]);
+    }
+  };
+
+  const handleCourseChange = (course) => {
+  if (selectedCourses.includes(course)) {
+    setSelectedCourses(selectedCourses.filter(c => c !== course));
+  } else {
+    setSelectedCourses([...selectedCourses, course]);
+  }
+};
+
 
   useEffect(()=>{
     if (daysOff.length >= 6){
@@ -34,6 +67,20 @@ const App= ()=> {
 
   }, [daysOff])
 
+  useEffect(() => {
+  const fetchCourses = async () => {
+    try {
+      const response = await fetch('https://hassanabbasnaqvi.pythonanywhere.com/api/get-courses');
+      if (!response.ok) throw new Error("Failed to fetch courses");
+      const data = await response.json();
+      setAllCourses(data.courses);         // assuming response = { courses: ["CC101","CC202",...] }
+      setSelectedCourses(data.courses);    // default: all checked
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  fetchCourses();
+}, []);
 
   const fetchTimetables = async () => {
     setLoading(true);
@@ -47,7 +94,9 @@ const App= ()=> {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          daysoff: daysOff.join(',')
+          daysoff: daysOff.join(','),
+          timingsOff: timingsOff,
+          courses: selectedCourses
         })
       });
       
@@ -59,25 +108,20 @@ const App= ()=> {
       setTimetables(data.data);
     } catch (err) {
       setError(err.message);
-
-      setTimetables(sampleResponse.data);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchTimetables();
-  }, []);
-
   return (
     <div className="app">
       <header className="app-header">
         <h1>College Timetables</h1>
-        <p>Select the days you don't want to attend college</p>
+        <p>Select the days and timings you don't want to attend college</p>
       </header>
       
       <div className="filters">
+        {/* Day Off Filter */}
         <h2>Filter by Days Off</h2>
         <div className="day-checkboxes">
           {daysOfWeek.map(day => (
@@ -91,6 +135,41 @@ const App= ()=> {
             </label>
           ))}
         </div>
+
+        {/* Timing Off Filter */}
+        <h2>Select undesired timings</h2> 
+        <div className="timing-checkboxes">
+          {timingOptions.map(t => (
+            <label key={t.value} className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={timingsOff.includes(t.value)}
+                onChange={() => handleTimingChange(t.value)}
+              />
+              {t.label}
+            </label>
+          ))}
+        </div>
+
+
+        <h2>Selected Courses</h2>
+<div className="course-checkboxes">
+  {allCourses.length === 0 ? (
+    <p>Loading courses...</p>
+  ) : (
+    allCourses.map(course => (
+      <label key={course} className="checkbox-label">
+        <input
+          type="checkbox"
+          checked={selectedCourses.includes(course)}
+          onChange={() => handleCourseChange(course)}
+        />
+        {course}
+      </label>
+    ))
+  )}
+</div>
+
         <button onClick={fetchTimetables} disabled={loading}>
           {loading ? 'Loading...' : 'Apply Filters'}
         </button>
@@ -99,13 +178,13 @@ const App= ()=> {
       {error && (
         <div className="error-message">
           <p>Error: {error}</p>
-          <p>Showing sample data for demonstration</p>
+          <p>Contact the developer to report this error: hassanabbas7881@gmail.com</p>
         </div>
       )}
       
       <div className="timetables-container">
         {timetables.length === 0 && !loading ? (
-          <p className="no-results">No timetables match your filters. Try selecting fewer days off.</p>
+          <p className="no-results">No timetables match your filters. Try selecting fewer restrictions.</p>
         ) : (
           allSelected? <><h1>اوے زیادہ مستی نہ کر، کالج نہیں آنا تو نہ آ</h1></> : <>{timetables.map(timetable => (
             <Timetable key={timetable.id} data={timetable} />
@@ -198,258 +277,5 @@ function DaySchedule({ day, sessions }) {
   );
 }
 
-// Sample response data for demonstration
-const sampleResponse = {
-  "data": [
-    {
-      "id": 1,
-      "courses": [
-        {
-          "name": "CC213 - Data Structures -",
-          "section": "A5",
-          "teacher": "Ahmad Raza",
-          "schedule": [
-            {
-              "day": "Thursday",
-              "time": "03:30 PM-04:45 PM",
-              "room": "SST1-701"
-            },
-            {
-              "day": "Saturday",
-              "time": "11:00 AM-12:15 PM",
-              "room": "SST1-406A"
-            }
-          ]
-        },
-        {
-          "name": "CC213L - Data Structures (Lab) -",
-          "section": "A1",
-          "teacher": "Jawad Hassan",
-          "schedule": [
-            {
-              "day": "Friday",
-              "time": "02:00 PM-03:15 PM",
-              "room": "SST1-606"
-            },
-            {
-              "day": "Friday",
-              "time": "03:30 PM-04:45 PM",
-              "room": "SST1-606"
-            }
-          ]
-        },
-        {
-          "name": "CC222 - Computer Organization and Assembly Language -",
-          "section": "A9",
-          "teacher": "Ashraf Ali",
-          "schedule": [
-            {
-              "day": "Tuesday",
-              "time": "11:00 AM-12:15 PM",
-              "room": "TBA"
-            },
-            {
-              "day": "Thursday",
-              "time": "02:00 PM-03:15 PM",
-              "room": "TBA"
-            }
-          ]
-        },
-        {
-          "name": "CC222L - Computer Organization and Assembly Language (Lab) -",
-          "section": "A4",
-          "teacher": "Ahmed Yar",
-          "schedule": [
-            {
-              "day": "Saturday",
-              "time": "08:00 AM-09:15 AM",
-              "room": "SST1-606"
-            },
-            {
-              "day": "Saturday",
-              "time": "09:30 AM-10:45 AM",
-              "room": "SST1-606"
-            }
-          ]
-        },
-        {
-          "name": "CC281 - Software Engineering -",
-          "section": "A7",
-          "teacher": null,
-          "schedule": [
-            {
-              "day": "Tuesday",
-              "time": "08:00 AM-09:15 AM",
-              "room": "TBA"
-            },
-            {
-              "day": "Friday",
-              "time": "11:00 AM-12:15 PM",
-              "room": "TBA"
-            }
-          ]
-        },
-        {
-          "name": "MA150 - Probability and Statistics -",
-          "section": "A1",
-          "teacher": null,
-          "schedule": [
-            {
-              "day": "Tuesday",
-              "time": "12:30 PM-01:45 PM",
-              "room": "TBA"
-            },
-            {
-              "day": "Saturday",
-              "time": "02:00 PM-03:15 PM",
-              "room": "TBA"
-            }
-          ]
-        },
-        {
-          "name": "MA210 - Linear Algebra -",
-          "section": "A2",
-          "teacher": null,
-          "schedule": [
-            {
-              "day": "Thursday",
-              "time": "05:00 PM-06:15 PM",
-              "room": "TBA"
-            },
-            {
-              "day": "Saturday",
-              "time": "12:30 PM-01:45 PM",
-              "room": "TBA"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "courses": [
-        {
-          "name": "CC213 - Data Structures -",
-          "section": "A5",
-          "teacher": "Ahmad Raza",
-          "schedule": [
-            {
-              "day": "Thursday",
-              "time": "03:30 PM-04:45 PM",
-              "room": "SST1-701"
-            },
-            {
-              "day": "Saturday",
-              "time": "11:00 AM-12:15 PM",
-              "room": "SST1-406A"
-            }
-          ]
-        },
-        {
-          "name": "CC213L - Data Structures (Lab) -",
-          "section": "A1",
-          "teacher": "Jawad Hassan",
-          "schedule": [
-            {
-              "day": "Friday",
-              "time": "02:00 PM-03:15 PM",
-              "room": "SST1-606"
-            },
-            {
-              "day": "Friday",
-              "time": "03:30 PM-04:45 PM",
-              "room": "SST1-606"
-            }
-          ]
-        },
-        {
-          "name": "CC222 - Computer Organization and Assembly Language -",
-          "section": "A9",
-          "teacher": "Ashraf Ali",
-          "schedule": [
-            {
-              "day": "Tuesday",
-              "time": "11:00 AM-12:15 PM",
-              "room": "TBA"
-            },
-            {
-              "day": "Thursday",
-              "time": "02:00 PM-03:15 PM",
-              "room": "TBA"
-            }
-          ]
-        },
-        {
-          "name": "CC222L - Computer Organization and Assembly Language (Lab) -",
-          "section": "A4",
-          "teacher": "Ahmed Yar",
-          "schedule": [
-            {
-              "day": "Saturday",
-              "time": "08:00 AM-09:15 AM",
-              "room": "SST1-606"
-            },
-            {
-              "day": "Saturday",
-              "time": "09:30 AM-10:45 AM",
-              "room": "SST1-606"
-            }
-          ]
-        },
-        {
-          "name": "CC281 - Software Engineering -",
-          "section": "A7",
-          "teacher": null,
-          "schedule": [
-            {
-              "day": "Tuesday",
-              "time": "08:00 AM-09:15 AM",
-              "room": "TBA"
-            },
-            {
-              "day": "Friday",
-              "time": "11:00 AM-12:15 PM",
-              "room": "TBA"
-            }
-          ]
-        },
-        {
-          "name": "MA150 - Probability and Statistics -",
-          "section": "A1",
-          "teacher": null,
-          "schedule": [
-            {
-              "day": "Tuesday",
-              "time": "12:30 PM-01:45 PM",
-              "room": "TBA"
-            },
-            {
-              "day": "Saturday",
-              "time": "02:00 PM-03:15 PM",
-              "room": "TBA"
-            }
-          ]
-        },
-        {
-          "name": "MA210 - Linear Algebra -",
-          "section": "A7",
-          "teacher": null,
-          "schedule": [
-            {
-              "day": "Tuesday",
-              "time": "03:30 PM-04:45 PM",
-              "room": "TBA"
-            },
-            {
-              "day": "Saturday",
-              "time": "03:30 PM-04:45 PM",
-              "room": "SST1-404A"
-            }
-          ]
-        }
-      ]
-    }
-  ]
-};
 
 export default App;
