@@ -15,7 +15,11 @@ const App= ()=> {
   const [allSelected, setAllSelected] = useState(false)
   const [timingsOff, setTimingsOff] = useState([]);
   const [allCourses, setAllCourses] = useState([]);      // all from server
+  const [allTeachers, setAllTeachers] = useState([]); 
   const [selectedCourses, setSelectedCourses] = useState([]); // currently selected
+  const [selectedTeachers, setSelectedTeachers] = useState([]); // currently selected
+  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+  const [isDropdownVisibleT, setIsDropdownVisibleT] = useState(false);
   
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const timingOptions = [
@@ -56,6 +60,14 @@ const App= ()=> {
   }
 };
 
+const handleTeacherChange = (teacher) => {
+  if (selectedTeachers.includes(teacher)) {
+    setSelectedTeachers(selectedTeachers.filter(t => t !== teacher));
+  } else {
+    setSelectedTeachers([...selectedTeachers, teacher]);
+  }
+};
+
 
   useEffect(()=>{
     if (daysOff.length >= 6){
@@ -82,6 +94,22 @@ const App= ()=> {
   fetchCourses();
 }, []);
 
+useEffect(() => {
+  const fetchTeachers = async () => {
+    try {
+      const response = await fetch('https://hassanabbasnaqvi.pythonanywhere.com/api/get-teachers');
+      if (!response.ok) throw new Error("Failed to fetch courses");
+      const data = await response.json();
+      setAllTeachers(data.teachers);         // assuming response = { courses: ["CC101","CC202",...] }
+      setSelectedTeachers(data.teachers)
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  fetchTeachers();
+}, []);
+
+
   const fetchTimetables = async () => {
     setLoading(true);
     setError(null);
@@ -96,7 +124,8 @@ const App= ()=> {
         body: JSON.stringify({
           daysoff: daysOff.join(','),
           timingsOff: timingsOff,
-          courses: selectedCourses
+          courses: selectedCourses,
+          teachers: selectedTeachers
         })
       });
       
@@ -152,23 +181,76 @@ const App= ()=> {
         </div>
 
 
-        <h2>Selected Courses</h2>
-<div className="course-checkboxes">
-  {allCourses.length === 0 ? (
-    <p>Loading courses...</p>
-  ) : (
-    allCourses.map(course => (
-      <label key={course} className="checkbox-label">
-        <input
-          type="checkbox"
-          checked={selectedCourses.includes(course)}
-          onChange={() => handleCourseChange(course)}
-        />
-        {course}
-      </label>
-    ))
-  )}
-</div>
+         <div className="course-dropdown-container">
+      {/* Clickable heading that toggles visibility */}
+      <h2 
+        onClick={()=>{setIsDropdownVisible(!isDropdownVisible)}}
+        style={{ cursor: 'pointer', userSelect: 'none' }}
+        className="dropdown-heading"
+      >
+        Selected Courses
+        {/* Optional dropdown indicator */}
+        <span style={{ marginLeft: '8px' }}>
+          {isDropdownVisible ? '▼' : '►'}
+        </span>
+      </h2>
+
+      {/* Dropdown content - only visible when isDropdownVisible is true */}
+      {isDropdownVisible && (
+        <div className="course-checkboxes dropdown-content">
+          {allCourses.length === 0 ? (
+            <p>Loading courses...</p>
+          ) : (
+            allCourses.map(course => (
+              <label key={course} className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selectedCourses.includes(course)}
+                  onChange={() => handleCourseChange(course)}
+                />
+                {course}
+              </label>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+
+
+    <div className="teacher-dropdown-container">
+      {/* Clickable heading that toggles visibility */}
+      <h2 
+        onClick={()=>{setIsDropdownVisibleT(!isDropdownVisibleT)}}
+        style={{ cursor: 'pointer', userSelect: 'none' }}
+        className="dropdown-heading"
+      >
+        Selected Teachers
+        {/* Optional dropdown indicator */}
+        <span style={{ marginLeft: '8px' }}>
+          {isDropdownVisibleT ? '▼' : '►'}
+        </span>
+      </h2>
+
+      {/* Dropdown content - only visible when isDropdownVisible is true */}
+      {isDropdownVisibleT && (
+        <div className="teachers-checkboxes dropdown-content">
+          {allTeachers.length === 0 ? (
+            <p>Loading teachers...</p>
+          ) : (
+            allTeachers.map(teacher => (
+              <label key={teacher} className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selectedTeachers.includes(teacher)}
+                  onChange={() => handleTeacherChange(teacher)}
+                />
+                {teacher}
+              </label>
+            ))
+          )}
+        </div>
+      )}
+    </div>
 
         <button onClick={fetchTimetables} disabled={loading}>
           {loading ? 'Loading...' : 'Apply Filters'}
