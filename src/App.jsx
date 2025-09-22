@@ -5,9 +5,10 @@ import './App.css'
 import {Routes, Route} from 'react-router-dom'
 import ReactDOM from 'react-dom';
 import { BrowserRouter } from 'react-router-dom';
-
+import html2canvas from 'html2canvas';
 
 const App= ()=> {
+  
   const [timetables, setTimetables] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -97,17 +98,23 @@ const handleTeacherChange = (teacher) => {
 useEffect(() => {
   const fetchTeachers = async () => {
     try {
-      const response = await fetch('https://hassanabbasnaqvi.pythonanywhere.com/api/get-teachers');
+      const response = await fetch('https://hassanabbasnaqvi.pythonanywhere.com/api/get-teachers', {method: "POST", headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          courses: selectedCourses,
+        })
+      });
       if (!response.ok) throw new Error("Failed to fetch courses");
       const data = await response.json();
-      setAllTeachers(data.teachers);         // assuming response = { courses: ["CC101","CC202",...] }
+      setAllTeachers(data.teachers);
       setSelectedTeachers(data.teachers)
     } catch (err) {
       console.error(err);
     }
   };
   fetchTeachers();
-}, []);
+}, [selectedCourses]);
 
 
   const fetchTimetables = async () => {
@@ -279,7 +286,6 @@ useEffect(() => {
 }
 
 function Timetable({ data }) {
-  // Group courses by day for better visualization
   const scheduleByDay = {};
   
   data.courses.forEach(course => {
@@ -296,7 +302,6 @@ function Timetable({ data }) {
     });
   });
   
-  // Sort sessions by time within each day
   Object.keys(scheduleByDay).forEach(day => {
     scheduleByDay[day].sort((a, b) => {
       const timeToMinutes = (timeStr) => {
