@@ -54,9 +54,15 @@ const App= ()=> {
   };
 
   const handleCourseChange = (course) => {
+    
   if (selectedCourses.includes(course)) {
+
     setSelectedCourses(selectedCourses.filter(c => c !== course));
   } else {
+    if (selectedCourses.length > 8){
+      alert("Please select the courses you need, don't nuke my server 🙏")
+      return
+    }
     setSelectedCourses([...selectedCourses, course]);
   }
 };
