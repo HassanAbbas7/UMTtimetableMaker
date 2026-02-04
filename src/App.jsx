@@ -22,7 +22,7 @@ const App= ()=> {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
   const [isDropdownVisibleT, setIsDropdownVisibleT] = useState(false);
   
-  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const timingOptions = [
     { label: "8:00 AM", value: 8 },
     { label: "9:30 AM", value: 9 },
