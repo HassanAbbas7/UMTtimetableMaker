@@ -87,7 +87,7 @@ const handleTeacherChange = (teacher) => {
       if (!response.ok) throw new Error("Failed to fetch courses");
       const data = await response.json();
       setAllCourses(data.courses);         // assuming response = { courses: ["CC101","CC202",...] }
-      setSelectedCourses(data.courses);    // default: all checked
+      // setSelectedCourses(data.courses);    // default: all checked
     } catch (err) {
       console.error(err);
     }
