@@ -184,7 +184,7 @@ const Generator = () => {
     <div className="app">
       <header className="app-header">
         <h1>College Timetables</h1>
-        <p>Make your desired time table in 10 sec</p>
+        <p>Make your desired time table in 10 seconds</p>
 
         <div className="whatsapp-help">
           <p>Buy Tokens: </p>
