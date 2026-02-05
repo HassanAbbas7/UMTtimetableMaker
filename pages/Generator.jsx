@@ -18,6 +18,8 @@ const Generator = () => {
   const [isDropdownVisibleT, setIsDropdownVisibleT] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
   const [token, setToken] = useState("");
+  const [remainingRequests, setRemainingRequests] = useState(0);
+  const [showCreditsButton, setShowCreditsButton] = useState(true);
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const timingOptions = [
@@ -30,12 +32,13 @@ const Generator = () => {
     { label: "5:00 PM", value: 17 },
     { label: "6:30 PM", value: 18 },
   ];
+
   const handleDayChange = (day) => {
     if (daysOff.includes(day)) {
-      if (daysOff.length < 2) {
-        alert("Select at least one off day!");
-        return
-      }
+      // if (daysOff.length < 2) {
+      //   alert("Select at least one off day!");
+      //   return
+      // }
       setDaysOff(daysOff.filter(d => d !== day));
     } else {
       setDaysOff([...daysOff, day]);
@@ -56,7 +59,7 @@ const Generator = () => {
 
       setSelectedCourses(selectedCourses.filter(c => c !== course));
     } else {
-      if (selectedCourses.length > 8) {
+      if (selectedCourses.length > 9) {
         alert("Please select the courses you need, don't nuke my server 🙏")
         return
       }
@@ -72,6 +75,19 @@ const Generator = () => {
     }
   };
 
+  const fetchRemainingCredits = async () => {
+    try {
+      const res = await fetch(`${API_URL}/check-credits`, {
+        token: token.trim()
+      });
+
+      const data = await res.json();
+      setRemainingRequests(data.remaining);
+      setShowCreditsButton(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     if (daysOff.length >= 5) {
@@ -168,7 +184,7 @@ const Generator = () => {
     <div className="app">
       <header className="app-header">
         <h1>College Timetables</h1>
-        <p>Select the days and timings you don't want to attend college</p>
+        <p>Make your desired time table in 10 sec</p>
 
         <div className="whatsapp-help">
           <p>Buy Tokens: </p>
@@ -203,6 +219,32 @@ const Generator = () => {
       </header>
 
 
+        {((remainingRequests !== null) && token) && (
+          <><div className="credits-box">
+
+            <input
+              type="text"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="Enter token"
+            />
+
+            {showCreditsButton ? (
+              <button
+                disabled={!token.trim()}
+                onClick={fetchRemainingCredits}
+              >
+                Show remaining credits
+              </button>
+            ) : (
+              <p className="credits-result">
+                Remaining credits: <strong>{remainingRequests}</strong>
+              </p>
+            )}
+
+          </div>
+          </>
+        )}
 
       <div className="filters">
         {/* Day Off Filter */}
@@ -321,7 +363,7 @@ const Generator = () => {
           )}
 
           {limitReached ? (
-            
+
             <LimitReached token={token} setToken={setToken} fetchTimetables={fetchTimetables} WHATSAPP1={WHATSAPP1} WHATSAPP2={WHATSAPP2} />
           ) : (
             <div className="timetables-container">
@@ -428,7 +470,7 @@ function DaySchedule({ day, sessions }) {
   );
 }
 
-const ErrorMessage = ({error}) => (
+const ErrorMessage = ({ error }) => (
   <div className="error-message">
     <p>Error: {error}</p>
     <p>
@@ -438,53 +480,53 @@ const ErrorMessage = ({error}) => (
   </div>
 )
 
-const LimitReached = ({token, setToken, fetchTimetables, WHATSAPP1, WHATSAPP2}) => (
+const LimitReached = ({ token, setToken, fetchTimetables, WHATSAPP1, WHATSAPP2 }) => (
   (
     <div className="limit-card filters">
       <h2>🚫 {!token && <>Free tier </>} Request Limit Reached</h2>
       {token ? (<p>
         You’ve reached your token limit.
         Enter a valid token below to continue viewing results.
-      </p>): (
+      </p>) : (
         <><p>
           You have reached the maximum number of requests allowed for free users.
           Please buy a token from either of the WhatsApp numbers below to continue using the service
-          </p>
+        </p>
 
           <div style={{ marginTop: '10px' }}>
-          <h4>Buy Tokens: </h4>
-          <a
-            href={`https://wa.me/${WHATSAPP1}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="whatsapp-link"
-          >
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
-              alt="WhatsApp"
-              className="whatsapp-icon"
-            />
-            <span>{WHATSAPP1}</span>
-          </a>
+            <h4>Buy Tokens: </h4>
+            <a
+              href={`https://wa.me/${WHATSAPP1}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="whatsapp-link"
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+                alt="WhatsApp"
+                className="whatsapp-icon"
+              />
+              <span>{WHATSAPP1}</span>
+            </a>
 
-          <a
-            href={`https://wa.me/${WHATSAPP2}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="whatsapp-link"
-          >
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
-              alt="WhatsApp"
-              className="whatsapp-icon"
-            />
-            <span>{WHATSAPP2}</span>
-          </a>
-        </div>
+            <a
+              href={`https://wa.me/${WHATSAPP2}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="whatsapp-link"
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+                alt="WhatsApp"
+                className="whatsapp-icon"
+              />
+              <span>{WHATSAPP2}</span>
+            </a>
+          </div>
         </>
-        
-        
-        )}
+
+
+      )}
 
       <label className="token-label">
         Enter your token:

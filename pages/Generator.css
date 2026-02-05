@@ -109,13 +109,63 @@ body {
   flex-wrap: wrap;
   justify-content: center;
 }
+.credits-box {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px dashed #ccc;
+  border-radius: 10px;
+  max-width: 360px;
+  background: #fafafa;
+}
+
+.credits-box input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid #bbb;
+  outline: none;
+  margin-bottom: 12px;
+}
+
+.credits-box input:focus {
+  border-color: #4f46e5;
+}
+
+.credits-box button {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: none;
+  background: #4f46e5;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.credits-box button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.credits-box button:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.credits-result {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 500;
+  color: #111827;
+}
 
 .whatsapp-link {
   display: flex;
   align-items: center;
   gap: 8px;
   text-decoration: none;
-  color: #cccccc;
+  color: #09ff00;
   font-weight: 500;
 }
 
