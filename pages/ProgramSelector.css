@@ -1,0 +1,30 @@
+.selector-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.selector-grid {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, 160px);
+  gap: 16px;
+}
+
+.selector-btn {
+  padding: 24px;
+  font-size: 20px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  background: #4f46e5;
+  color: white;
+  transition: transform 0.15s ease;
+}
+
+.selector-btn:hover {
+  transform: scale(1.05);
+}
