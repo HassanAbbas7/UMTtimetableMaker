@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import './Generator.css'
-import { API_URL, WHATSAPP1, WHATSAPP2 } from '../constants/constants';
+import { API_URL, WHATSAPP1, WHATSAPP2, LS_COURSES_KEY, LS_TEACHERS_KEY, TOKEN_KEY } from '../constants/constants';
+import * as XLSX from "xlsx";
+
 
 const Generator = () => {
 
@@ -20,6 +22,8 @@ const Generator = () => {
   const [token, setToken] = useState("");
   const [remainingRequests, setRemainingRequests] = useState(0);
   const [showCreditsButton, setShowCreditsButton] = useState(true);
+  const [selected, setSelected] = useState("AI");
+  const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const timingOptions = [
@@ -32,6 +36,44 @@ const Generator = () => {
     { label: "5:00 PM", value: 17 },
     { label: "6:30 PM", value: 18 },
   ];
+
+  function flattenTimetable(data) {
+    if (!data?.courses) return [];
+
+    return data.courses.flatMap(course =>
+      course.schedule.map(slot => ({
+        "Course Name": course.name.trim(),
+        "Section": course.section || "-",
+        "Teacher": course.teacher,
+        "Day": slot.day,
+        "Time": slot.time,
+        "Room": slot.room,
+      }))
+    );
+  }
+
+
+
+  function exportTimetableToExcel(apiData) {
+    const rows = flattenTimetable(apiData);
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+
+    // 👇 THIS FIXES COLUMN RESIZING
+    worksheet["!cols"] = [
+      { wch: 30 }, // Course Name
+      { wch: 10 }, // Section
+      { wch: 22 }, // Teacher
+      { wch: 12 }, // Day
+      { wch: 22 }, // Time
+      { wch: 15 }, // Room
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Timetable");
+
+    XLSX.writeFile(workbook, "timetable.xlsx");
+  }
 
   const handleDayChange = (day) => {
     if (daysOff.includes(day)) {
@@ -75,11 +117,16 @@ const Generator = () => {
     }
   };
 
+  const handleTokenChange = (e) => {
+    setToken(e.target.value);
+    localStorage.setItem(TOKEN_KEY, e.target.value);
+    setShowCreditsButton(true);
+    setRemainingRequests(null);
+  }
+
   const fetchRemainingCredits = async () => {
     try {
-      const res = await fetch(`${API_URL}/check-credits`, {
-        token: token.trim()
-      });
+      const res = await fetch(`${API_URL}/check-credits/${token.trim()}`);
 
       const data = await res.json();
       setRemainingRequests(data.remaining);
@@ -88,6 +135,53 @@ const Generator = () => {
       console.error(err);
     }
   };
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const storedCourses = localStorage.getItem(LS_COURSES_KEY);
+    const storedTeachers = localStorage.getItem(LS_TEACHERS_KEY);
+    const storedToken = localStorage.getItem(TOKEN_KEY);
+
+    if (storedToken) {
+      setToken(storedToken);
+    }
+
+    console.log("Loading from localStorage:", { storedCourses, storedTeachers })
+    
+    if (storedCourses) {
+      try {
+        setSelectedCourses(JSON.parse(storedCourses));
+      } catch (e) {
+        console.log(e)
+        localStorage.removeItem(LS_COURSES_KEY);
+      }
+    }
+
+    if (storedTeachers) {
+      try {
+        setSelectedTeachers(JSON.parse(storedTeachers));
+      } catch {
+        localStorage.removeItem(LS_TEACHERS_KEY);
+      }
+    }
+    
+    setHasLoadedFromStorage(true);
+  }, []);
+
+  // Save selectedCourses to localStorage
+  useEffect(() => {
+    if (hasLoadedFromStorage) {
+      localStorage.setItem(LS_COURSES_KEY, JSON.stringify(selectedCourses));
+    }
+  }, [selectedCourses, hasLoadedFromStorage]);
+
+  // Save selectedTeachers to localStorage
+  useEffect(() => {
+    if (hasLoadedFromStorage) {
+      localStorage.setItem(LS_TEACHERS_KEY, JSON.stringify(selectedTeachers));
+    }
+  }, [selectedTeachers, hasLoadedFromStorage]);
+
 
   useEffect(() => {
     if (daysOff.length >= 5) {
@@ -115,29 +209,48 @@ const Generator = () => {
   }, []);
 
   useEffect(() => {
+    // Only fetch teachers if we have courses selected AND we've loaded from storage
+    if (!hasLoadedFromStorage || selectedCourses.length === 0) return;
+
     const fetchTeachers = async () => {
       try {
         const response = await fetch(`${API_URL}/get-teachers`, {
-          method: "POST", headers: {
+          method: "POST", 
+          headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             courses: selectedCourses,
           })
         });
-        if (!response.ok) throw new Error("Failed to fetch courses");
+        if (!response.ok) throw new Error("Failed to fetch teachers");
         const data = await response.json();
         setAllTeachers(data.teachers);
-        setSelectedTeachers(data.teachers)
+        
+        // Only auto-select all teachers if there are no cached teachers
+        // This preserves user's teacher selections
+        if (selectedTeachers.length === 0) {
+          setSelectedTeachers(data.teachers);
+        } else {
+          // Filter selectedTeachers to only include teachers that are still available
+          setSelectedTeachers(prev => 
+            prev.filter(teacher => data.teachers.includes(teacher))
+          );
+        }
       } catch (err) {
         console.error(err);
       }
     };
     fetchTeachers();
-  }, [selectedCourses]);
+  }, [selectedCourses, hasLoadedFromStorage]);
 
 
   const fetchTimetables = async () => {
+
+    if (allCourses.length > 0 && selectedCourses.length < 4) {
+      alert("Please select more courses");
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -183,13 +296,13 @@ const Generator = () => {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>College Timetables</h1>
+        <h1>College Timetables {`For ${selected}`}</h1>
         <p>Make your desired time table in 10 seconds</p>
 
         <div className="whatsapp-help">
           <p>Buy Tokens: </p>
           <a
-            href={`https://wa.me/${WHATSAPP1}`}
+            href={`https://wa.me/${WHATSAPP1.split(' ').join('')}`}
             target="_blank"
             rel="noopener noreferrer"
             className="whatsapp-link"
@@ -203,7 +316,7 @@ const Generator = () => {
           </a>
 
           <a
-            href={`https://wa.me/${WHATSAPP2}`}
+            href={`https://wa.me/${WHATSAPP2.split(' ').join('')}`}
             target="_blank"
             rel="noopener noreferrer"
             className="whatsapp-link"
@@ -219,32 +332,48 @@ const Generator = () => {
       </header>
 
 
-        {((remainingRequests !== null) && token) && (
-          <><div className="credits-box">
+      {(token) && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+            <div className="credits-box">
+              <h3>Your Token: </h3>
+              <input
+                type="text"
+                value={token}
+                onChange={handleTokenChange}
+                placeholder="Enter token"
+              />
 
-            <input
-              type="text"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="Enter token"
-            />
+              {showCreditsButton ? (
+                <button
+                  disabled={!token.trim()}
+                  onClick={fetchRemainingCredits}
+                >
+                  Show remaining credits
+                </button>
+              ) : (
+                <p className="credits-result">
+                  Remaining credits: <strong>{remainingRequests}</strong>
+                </p>
+              )}
 
-            {showCreditsButton ? (
-              <button
-                disabled={!token.trim()}
-                onClick={fetchRemainingCredits}
-              >
-                Show remaining credits
-              </button>
-            ) : (
-              <p className="credits-result">
-                Remaining credits: <strong>{remainingRequests}</strong>
-              </p>
-            )}
-
+            </div>
           </div>
-          </>
-        )}
+
+        </>
+      )}
+
+      <div className="course-buttons">
+        {["AI", "ML", "DS", "SE"].map(item => (
+          <button
+            key={item}
+            className={selected === item ? "active" : ""}
+            onClick={() => setSelected(item)}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
 
       <div className="filters">
         {/* Day Off Filter */}
@@ -364,7 +493,7 @@ const Generator = () => {
 
           {limitReached ? (
 
-            <LimitReached token={token} setToken={setToken} fetchTimetables={fetchTimetables} WHATSAPP1={WHATSAPP1} WHATSAPP2={WHATSAPP2} />
+            <LimitReached token={token} handleTokenChange={handleTokenChange} fetchTimetables={fetchTimetables} WHATSAPP1={WHATSAPP1} WHATSAPP2={WHATSAPP2} />
           ) : (
             <div className="timetables-container">
               {timetables.length === 0 && !allSelected ? (
@@ -377,7 +506,7 @@ const Generator = () => {
                 ) : (
                   <>
                     {timetables.map(timetable => (
-                      <Timetable key={timetable.id} data={timetable} />
+                      <Timetable key={timetable.id} data={timetable} exportTimetableToExcel={exportTimetableToExcel} />
                     ))}
                   </>
                 )
@@ -391,7 +520,7 @@ const Generator = () => {
   );
 }
 
-function Timetable({ data }) {
+function Timetable({ data, exportTimetableToExcel }) {
   const scheduleByDay = {};
 
   data.courses.forEach(course => {
@@ -446,6 +575,11 @@ function Timetable({ data }) {
           <DaySchedule key={day} day={day} sessions={scheduleByDay[day]} />
         ))}
       </div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+        <button className="export-btn" onClick={() => exportTimetableToExcel(data)}>
+          Download Excel
+        </button>
+      </div>
 
     </div>
   );
@@ -480,12 +614,12 @@ const ErrorMessage = ({ error }) => (
   </div>
 )
 
-const LimitReached = ({ token, setToken, fetchTimetables, WHATSAPP1, WHATSAPP2 }) => (
+const LimitReached = ({ token, handleTokenChange, fetchTimetables, WHATSAPP1, WHATSAPP2, remainingRequests }) => (
   (
     <div className="limit-card filters">
       <h2>🚫 {!token && <>Free tier </>} Request Limit Reached</h2>
-      {token ? (<p>
-        You’ve reached your token limit.
+      {(token && remainingRequests != null) ? (<p>
+        You've reached your token limit.
         Enter a valid token below to continue viewing results.
       </p>) : (
         <><p>
@@ -496,7 +630,7 @@ const LimitReached = ({ token, setToken, fetchTimetables, WHATSAPP1, WHATSAPP2 }
           <div style={{ marginTop: '10px' }}>
             <h4>Buy Tokens: </h4>
             <a
-              href={`https://wa.me/${WHATSAPP1}`}
+              href={`https://wa.me/${WHATSAPP1.split(' ').join('')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="whatsapp-link"
@@ -510,7 +644,7 @@ const LimitReached = ({ token, setToken, fetchTimetables, WHATSAPP1, WHATSAPP2 }
             </a>
 
             <a
-              href={`https://wa.me/${WHATSAPP2}`}
+              href={`https://wa.me/${WHATSAPP2.split(' ').join('')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="whatsapp-link"
@@ -536,7 +670,7 @@ const LimitReached = ({ token, setToken, fetchTimetables, WHATSAPP1, WHATSAPP2 }
         type="text"
         className="token-input"
         value={token}
-        onChange={(e) => setToken(e.target.value)}
+        onChange={handleTokenChange}
         placeholder="e.g. X9A2K7QW"
       />
 
