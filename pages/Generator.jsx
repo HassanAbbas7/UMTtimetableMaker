@@ -9,7 +9,7 @@ const Generator = () => {
   const [timetables, setTimetables] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [daysOff, setDaysOff] = useState(['Monday']);
+  const [daysOff, setDaysOff] = useState([]);
   const [allSelected, setAllSelected] = useState(false)
   const [timingsOff, setTimingsOff] = useState([]);
   const [allCourses, setAllCourses] = useState([]);
@@ -22,6 +22,7 @@ const Generator = () => {
   const [token, setToken] = useState("");
   const [remainingRequests, setRemainingRequests] = useState(0);
   const [showCreditsButton, setShowCreditsButton] = useState(true);
+  const [creditsExpired, setCreditsExpired] = useState(false);
   const [selected, setSelected] = useState("AI");
   const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
 
@@ -37,21 +38,42 @@ const Generator = () => {
     { label: "6:30 PM", value: 18 },
   ];
 
-  function flattenTimetable(data) {
-    if (!data?.courses) return [];
+  const DAYS_ORDER = {
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+  Sunday: 7,
+};
 
-    return data.courses.flatMap(course =>
-      course.schedule.map(slot => ({
+  function flattenTimetable(data) {
+  if (!data?.courses) return [];
+
+  const byDay = {};
+
+  data.courses.forEach(course => {
+    course.schedule.forEach(slot => {
+      if (!byDay[slot.day]) {
+        byDay[slot.day] = [];
+      }
+
+      byDay[slot.day].push({
         "Course Name": course.name.trim(),
         "Section": course.section || "-",
         "Teacher": course.teacher,
         "Day": slot.day,
         "Time": slot.time,
         "Room": slot.room,
-      }))
-    );
-  }
+      });
+    });
+  });
 
+  return Object.keys(byDay)
+    .sort((a, b) => DAYS_ORDER[a] - DAYS_ORDER[b])
+    .flatMap(day => byDay[day]);
+}
 
 
   function exportTimetableToExcel(apiData) {
@@ -271,6 +293,7 @@ const Generator = () => {
       });
 
       if (response.status === 429) {
+        setCreditsExpired(true);
         setLimitReached(true);
         setTimetables([]);
         return;
@@ -353,7 +376,7 @@ const Generator = () => {
                 </button>
               ) : (
                 <p className="credits-result">
-                  Remaining credits: <strong>{remainingRequests}</strong>
+                  Remaining credits: <strong style={{color: remainingRequests?"green":"red"}}>{remainingRequests? remainingRequests: "Token expired/invalid"}</strong>
                 </p>
               )}
 
@@ -502,7 +525,7 @@ const Generator = () => {
                 </p>
               ) : (
                 allSelected ? (
-                  <h1>اوے زیادہ مستی نہ کر، یونیورسٹی نہیں آنا تو نہ آ</h1>
+                  <h1>Us Bhai Us 😭🙏🥀</h1>
                 ) : (
                   <>
                     {timetables.map(timetable => (
@@ -614,11 +637,11 @@ const ErrorMessage = ({ error }) => (
   </div>
 )
 
-const LimitReached = ({ token, handleTokenChange, fetchTimetables, WHATSAPP1, WHATSAPP2, remainingRequests }) => (
+const LimitReached = ({ token, handleTokenChange, fetchTimetables, WHATSAPP1, WHATSAPP2, creditsExpired }) => (
   (
     <div className="limit-card filters">
-      <h2>🚫 {!token && <>Free tier </>} Request Limit Reached</h2>
-      {(token && remainingRequests != null) ? (<p>
+      <h2>🚫 {(!creditsExpired) && <>Free tier </>} Request Limit Reached</h2>
+      {(token && creditsExpired) ? (<p>
         You've reached your token limit.
         Enter a valid token below to continue viewing results.
       </p>) : (
