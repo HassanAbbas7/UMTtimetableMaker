@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './Generator.css'
-import { API_URL, WHATSAPP1, WHATSAPP2, LS_COURSES_KEY, LS_TEACHERS_KEY, TOKEN_KEY } from '../constants/constants';
+import { API_URL, WHATSAPP1, WHATSAPP2, LS_COURSES_KEY, LS_TEACHERS_KEY, TOKEN_KEY, LS_DAYS_OFF_KEY, LS_TIMINGS_KEY } from '../constants/constants';
 import * as XLSX from "xlsx";
 
 
@@ -81,7 +81,6 @@ const Generator = () => {
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
 
-    // 👇 THIS FIXES COLUMN RESIZING
     worksheet["!cols"] = [
       { wch: 30 }, // Course Name
       { wch: 10 }, // Section
@@ -99,14 +98,11 @@ const Generator = () => {
 
   const handleDayChange = (day) => {
     if (daysOff.includes(day)) {
-      // if (daysOff.length < 2) {
-      //   alert("Select at least one off day!");
-      //   return
-      // }
       setDaysOff(daysOff.filter(d => d !== day));
     } else {
       setDaysOff([...daysOff, day]);
     }
+    
   };
 
   const handleTimingChange = (hour) => {
@@ -115,6 +111,7 @@ const Generator = () => {
     } else {
       setTimingsOff([...timingsOff, hour]);
     }
+
   };
 
   const handleCourseChange = (course) => {
@@ -162,13 +159,15 @@ const Generator = () => {
   useEffect(() => {
     const storedCourses = localStorage.getItem(LS_COURSES_KEY);
     const storedTeachers = localStorage.getItem(LS_TEACHERS_KEY);
+    const storedDaysOff = localStorage.getItem(LS_DAYS_OFF_KEY);
+    const storedTimingsOff = localStorage.getItem(LS_TIMINGS_KEY);
     const storedToken = localStorage.getItem(TOKEN_KEY);
 
     if (storedToken) {
       setToken(storedToken);
     }
 
-    console.log("Loading from localStorage:", { storedCourses, storedTeachers })
+    console.log("Loading from localStorage:", { storedCourses, storedTeachers, storedDaysOff, storedTimingsOff })
     
     if (storedCourses) {
       try {
@@ -186,7 +185,25 @@ const Generator = () => {
         localStorage.removeItem(LS_TEACHERS_KEY);
       }
     }
-    
+
+      if (storedDaysOff) {
+      try {
+        setDaysOff(JSON.parse(storedDaysOff));
+      } catch (e){
+        console.log(e)
+        localStorage.removeItem(LS_DAYS_OFF_KEY);
+      }
+
+    }
+
+    if (storedTimingsOff) {
+      try {
+        setTimingsOff(JSON.parse(storedTimingsOff));
+      } catch {
+        localStorage.removeItem(LS_TIMINGS_KEY);
+      }
+    }
+
     setHasLoadedFromStorage(true);
   }, []);
 
@@ -206,6 +223,13 @@ const Generator = () => {
 
 
   useEffect(() => {
+    if (daysOff.length >= 1){
+      localStorage.setItem(LS_DAYS_OFF_KEY, JSON.stringify(daysOff));
+    }
+    if (timingsOff.length >= 1){
+      localStorage.setItem(LS_TIMINGS_KEY, JSON.stringify(timingsOff));
+    }
+    
     if (daysOff.length >= 5) {
       setAllSelected(true);
     }
@@ -213,7 +237,7 @@ const Generator = () => {
       setAllSelected(false)
     }
 
-  }, [daysOff])
+  }, [daysOff, timingsOff])
 
   useEffect(() => {
     const fetchCourses = async () => {
