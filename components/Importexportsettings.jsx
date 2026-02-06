@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { encodeSettings, decodeSettings, isValidSettingsCode } from '../constants/Settingscodec';
-import './ImportExportSettings.css';
+import './Importexportsettings.css';
 
 const ImportExportSettings = ({ 
   daysOff, 
