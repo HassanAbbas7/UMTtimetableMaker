@@ -688,11 +688,28 @@ const LimitReached = ({ token, handleTokenChange, fetchTimetables, WHATSAPP1, WH
       {(token && creditsExpired) ? (<p>
         You've reached your token limit.
         Enter a valid token below to continue viewing results.
+
+        <h5>Prices:</h5>
+        <pre>
+          20 requests - 50 PKR <br />
+          50 requests - 100 PKR <br />
+          100 requests - 150 PKR
+
+        </pre>
+        
       </p>) : (
         <><p>
           You have reached the maximum number of requests allowed for free users.
           Please buy a token from either of the WhatsApp numbers below to continue using the service
         </p>
+
+        <h5>Prices:</h5>
+        <pre>
+          20 requests - 50 PKR <br />
+          50 requests - 100 PKR <br />
+          100 requests - 150 PKR
+
+        </pre>
 
           <div style={{ marginTop: '10px' }}>
             <h4>Buy Tokens: </h4>
