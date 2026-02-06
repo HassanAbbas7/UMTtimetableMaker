@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import './Generator.css'
 import { API_URL, WHATSAPP1, WHATSAPP2, LS_COURSES_KEY, LS_TEACHERS_KEY, TOKEN_KEY, LS_DAYS_OFF_KEY, LS_TIMINGS_KEY } from '../constants/constants';
 import * as XLSX from "xlsx";
-
+import ImportExportSettings from '../components/Importexportsettings';
 
 const Generator = () => {
 
@@ -46,6 +46,20 @@ const Generator = () => {
   Friday: 5,
   Saturday: 6,
   Sunday: 7,
+};
+
+const handleImportSettings = (settings) => {
+  // Update all state with imported settings
+  setDaysOff(settings.daysOff);
+  setTimingsOff(settings.timingsOff);
+  setSelectedCourses(settings.selectedCourses);
+  setSelectedTeachers(settings.selectedTeachers);
+  
+  // Also update localStorage
+  localStorage.setItem(LS_DAYS_OFF_KEY, JSON.stringify(settings.daysOff));
+  localStorage.setItem(LS_TIMINGS_KEY, JSON.stringify(settings.timingsOff));
+  localStorage.setItem(LS_COURSES_KEY, JSON.stringify(settings.selectedCourses));
+  localStorage.setItem(LS_TEACHERS_KEY, JSON.stringify(settings.selectedTeachers));
 };
 
   function flattenTimetable(data) {
@@ -229,7 +243,7 @@ const Generator = () => {
     if (timingsOff.length >= 1){
       localStorage.setItem(LS_TIMINGS_KEY, JSON.stringify(timingsOff));
     }
-    
+
     if (daysOff.length >= 5) {
       setAllSelected(true);
     }
@@ -421,7 +435,13 @@ const Generator = () => {
           </button>
         ))}
       </div>
-
+<ImportExportSettings
+      daysOff={daysOff}
+      timingsOff={timingsOff}
+      selectedCourses={selectedCourses}
+      selectedTeachers={selectedTeachers}
+      onImport={handleImportSettings}
+    />
       <div className="filters">
         {/* Day Off Filter */}
         <h2>Filter by Days Off</h2>
